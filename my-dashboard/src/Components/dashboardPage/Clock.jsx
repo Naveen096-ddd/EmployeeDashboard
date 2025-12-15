@@ -20,40 +20,85 @@ const Clock = () => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const handleClockIn = () => {
-    if (clockInTime && !clockOutTime) return;
-    const now = new Date();
-    setClockInTime(now);
-    setClockOutTime(null);
-    setWorkedHours(0);
-    setStatusMessage("");
-    setWorkStatus("Working");
-    if (timerInterval) clearInterval(timerInterval);
-    const interval = setInterval(() => {
-        const diffMs = new Date() - now;
-        setWorkedHours(diffMs / (1000 * 60 * 60));
-    }, 1000);
-    setTimerInterval(interval);
-  };
-  const handleClockOut = () => {
-    if (!clockInTime) return;
-    const now = new Date();
-    setClockOutTime(now);
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      setTimerInterval(null);
-    }
-    const worked = (now - clockInTime) / (1000 * 60 * 60);
-    setWorkedHours(worked);
-    let status = "";
-    if (worked < 5) status = "Absent";
-    else if (worked >= 5 && worked < 9) status = "Half Day";
-    else status = "Full Day Present";
+  useEffect(() => {
+  const savedClockIn = localStorage.getItem("clockInTime");
+  const savedClockOut = localStorage.getItem("clockOutTime");
+  const savedWorkedHours = localStorage.getItem("workedHours");
+  const savedStatus = localStorage.getItem("workStatus");
 
-    setWorkStatus(status);
-    setStatusMessage("You have clocked out");
-    alert(`You have clocked out. Status: ${status}`);
-  };
+  if (savedClockIn) {
+    const clockInDate = new Date(savedClockIn);
+    setClockInTime(clockInDate);
+    if (!savedClockOut) {
+      const interval = setInterval(() => {
+        const diffMs = new Date() - clockInDate;
+        setWorkedHours(diffMs / (1000 * 60 * 60));
+      }, 1000);
+      setTimerInterval(interval);
+      setWorkStatus("Working");
+    }
+  }
+
+  if (savedClockOut) {
+    setClockOutTime(new Date(savedClockOut));
+  }
+
+  if (savedWorkedHours) {
+    setWorkedHours(parseFloat(savedWorkedHours));
+  }
+
+  if (savedStatus) {
+    setWorkStatus(savedStatus);
+  }
+}, []);
+
+  const handleClockIn = () => {
+  if (clockInTime && !clockOutTime) return;
+  const now = new Date();
+  setClockInTime(now);
+  setClockOutTime(null);
+  setWorkedHours(0);
+  setStatusMessage("");
+  setWorkStatus("Working");
+  localStorage.setItem("clockInTime", now.toISOString());
+  localStorage.removeItem("clockOutTime");
+  localStorage.removeItem("workedHours");
+  localStorage.removeItem("workStatus");
+
+  if (timerInterval) clearInterval(timerInterval);
+  const interval = setInterval(() => {
+    const diffMs = new Date() - now;
+    setWorkedHours(diffMs / (1000 * 60 * 60));
+  }, 1000);
+  setTimerInterval(interval);
+};
+
+const handleClockOut = () => {
+  if (!clockInTime) return;
+  const now = new Date();
+  setClockOutTime(now);
+
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    setTimerInterval(null);
+  }
+
+  const worked = (now - clockInTime) / (1000 * 60 * 60);
+  setWorkedHours(worked);
+
+  let status = "";
+  if (worked < 5) status = "Absent";
+  else if (worked >= 5 && worked < 9) status = "Half Day";
+  else status = "Full Day Present";
+
+  setWorkStatus(status);
+  setStatusMessage("You have clocked out");
+  localStorage.setItem("clockOutTime", now.toISOString());
+  localStorage.setItem("workedHours", worked.toString());
+  localStorage.setItem("workStatus", status);
+
+  alert(`You have clocked out. Status: ${status}`);
+};
   const formatTime = (date) =>
     date ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--";
    const formatWorkedHours = (hoursDecimal) => {
@@ -62,9 +107,14 @@ const Clock = () => {
     return `${h}h ${m}m`;
   };
   return (
+    <>
+    <h1 className="text-3xl  dark:text-white font-bold">
+      Clock In / Clock Out
+    </h1>
+    <h3 className="text-xl mb-3 dark:text-white">
+      View your attendance history and statistics
+    </h3>
     <div className="p-4 md:p-6 w-full min-h-screen dark:bg-[#1f1f1f] text-black dark:text-white">
-      <h1 className="text-3xl ">Clock In / Clock Out</h1>
-      <h3 className="text-xl mb-3">View your attendance history and statistics</h3>
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="relative bg-blue-500 text-white shadow-lg rounded-xl p-5 w-full">
           <div className="absolute top-4 left-4 flex flex-col gap-1">
@@ -157,6 +207,7 @@ const Clock = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
